@@ -180,10 +180,8 @@ The seed script creates demo users, amenities, 18 listings with three images eac
 
 Responsive layouts, category shortcuts, amenity/price filters, persistent favorites, toast feedback, an availability-aware booking quote, themed seeded photo galleries, and FastAPI interactive docs are included. No interactive map or real payment integration is included.
 
-## Deploy quickly (Vercel + Render)
+## Deploy quickly (Render)
 
-Push this repository to GitHub. On Render, create a Python Web Service with root `backend`, build command `pip install -r requirements.txt`, and start command `python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. Set `FRONTEND_ORIGIN` to the Vercel site's exact HTTPS origin. The start command initializes and seeds an empty SQLite database.
+Push this repository to GitHub and create two Render Web Services from it. For the backend, use root `backend`, build command `pip install -r requirements.txt`, and start command `python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. For the frontend, use root `frontend`, build command `npm ci && npm run build`, and start command `npm start`. Use the Node runtime for the frontend and Python 3 for the backend.
 
-On Vercel, import the same repository, set root directory to `frontend`, keep the Next.js preset, and use `npm ci` / `npm run build`. Set `NEXT_PUBLIC_API_URL` to the Render URL ending in `/api`, then deploy. This variable is read at build time.
-
-Required environment variables: Render `FRONTEND_ORIGIN`; Vercel `NEXT_PUBLIC_API_URL`. Render supplies `PORT`. SQLite defaults to `backend/staybnb.db`; Render's temporary disk can lose data when the service is replaced or redeployed, at which point startup seeds demo data again. This setup is for a quick single-instance demo.
+Set frontend `NEXT_PUBLIC_API_URL` to the backend's public Render URL ending in `/api`. Set backend `FRONTEND_ORIGIN` to the frontend's exact public Render origin. Render supplies `PORT`. SQLite defaults to `backend/staybnb.db`; Render's temporary disk can lose data when the service is replaced or spun down, and startup seeds demo data again. This setup is for a quick, single-instance demo.
