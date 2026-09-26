@@ -1,187 +1,364 @@
-# Staybnb
+# Staybnb 🏡
 
-Staybnb is a student full-stack short-stay marketplace inspired by familiar home-rental apps. Guests can browse and filter stays, save favorites, and create mock-confirmed bookings. Hosts can manage their own listings and view their bookings. Data is stored in SQLite.
+Staybnb is a full-stack Airbnb-style stay booking application built as a college project. It allows users to browse stays, filter listings, view property details, make bookings, manage their trips, and save properties to a wishlist. Hosts can create and manage their listings and view bookings.
 
-## Features
+**Live Demo:** [Staybnb – Find your place](https://airbnb-frontend-ff31.onrender.com/)
 
-- Responsive listing marketplace with location, date, guest, property type, price, and amenity filters
-- Listing details with photo gallery, amenities, reviews, availability dates, and a server-priced booking summary
-- Booking validation, mock checkout, confirmation, and My Trips
-- Guest wishlists/favorites
-- Host dashboard with listing create, edit, delete, and host booking views
-- Seeded demo data with 18 stays and location/property-themed photo sets
-- Health endpoint and interactive FastAPI documentation
+---
 
-## Tech stack
+## 1. Tech Stack
 
-- Frontend: Next.js 15, React, TypeScript, Tailwind CSS, Lucide React, date-fns
-- Backend: Python, FastAPI, Pydantic Settings, SQLAlchemy 2
-- Database: SQLite
-- API: JSON REST with a mock current-user header
+### Frontend
 
-## Architecture
+* Next.js 15
+* React
+* TypeScript
+* Tailwind CSS
 
-The frontend and backend are separate applications. Next.js pages compose UI components; reusable API modules call FastAPI. FastAPI route handlers validate requests and delegate database/business operations to services. SQLAlchemy models define persistence and relationships. Booking prices and availability are checked by the backend; the browser does not determine the final charge.
+### Backend
 
-## Project structure
+* Python
+* FastAPI
+* Pydantic
+* SQLAlchemy
+
+### Database
+
+* SQLite
+
+### Deployment
+
+* Render
+
+---
+
+## 2. Architecture Overview
+
+The application follows a simple **frontend + backend + database** architecture.
 
 ```text
-frontend/
-  src/app/               Next.js routes and global styles
-  src/components/        Marketplace, listing, booking, host, and shared UI
-  src/lib/api/            Typed API client and endpoint modules
-  public/                 Local fallback artwork
-  .env.example            Public API URL example
-backend/
-  app/api/routes/         FastAPI routers
-  app/core/               Environment-backed settings
-  app/db/                 Engine, session, initialization, and seed scripts
-  app/models/             SQLAlchemy tables and relationships
-  app/schemas/            Pydantic request/response models
-  app/services/           Listing, booking, favorite, review, and health logic
-  .env.example            Backend setting examples
-  requirements.txt        Python dependencies
+                ┌─────────────────────┐
+                │      Next.js        │
+                │     Frontend        │
+                └──────────┬──────────┘
+                           │
+                     REST API Calls
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │       FastAPI       │
+                │       Backend       │
+                └──────────┬──────────┘
+                           │
+                      SQLAlchemy
+                           │
+                           ▼
+                ┌─────────────────────┐
+                │       SQLite        │
+                │      Database       │
+                └─────────────────────┘
 ```
 
-Main frontend routes are `/`, `/listings/[id]`, `/checkout/[listingId]`, `/booking-confirmation/[bookingId]`, `/trips`, `/wishlist`, `/host`, `/host/listings/new`, and `/host/listings/[id]/edit`.
+### How it works
 
-## Database overview
+1. The user interacts with the Next.js frontend.
+2. The frontend sends requests to the FastAPI backend.
+3. FastAPI handles the application logic and validation.
+4. SQLAlchemy is used to communicate with the SQLite database.
+5. The backend returns the required data to the frontend.
 
-| Table | Purpose and relationships |
-|---|---|
-| `users` | Mock guest and host accounts; a host owns listings and a guest creates bookings/reviews. |
-| `listings` | Stay details, price, capacity, property type, rating, and host foreign key. |
-| `listing_images` | Ordered image URLs and captions; each image belongs to one listing. |
-| `amenities` | Reusable amenity definitions. |
-| `listing_amenities` | Many-to-many link between listings and amenities. |
-| `bookings` | Guest/listing reservation, exclusive check-out date, guest count, price snapshots, fees, and status. |
-| `reviews` | Guest review associated with a listing and, when submitted, a completed booking. |
-| `favorites` | User-to-listing saved item, unique per pair. |
+The backend is responsible for important operations such as **booking validation, availability checking, and price calculation**.
 
-SQLite is configured at `backend/staybnb.db` when commands run from `backend/`. The database file is ignored by Git; it is created locally by initialization/seed commands and retained across backend restarts.
+---
 
-## Main API endpoints
+## 3. Database Schema
 
-All endpoints are prefixed by `/api`.
+The main database tables are:
 
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/health` | API health check. |
-| `GET` | `/users/me` | Return the selected mock user. |
-| `GET` | `/amenities` | List filterable amenities. |
-| `GET`, `POST` | `/listings` | Search and paginate listings; create as the selected host. |
-| `GET`, `PUT`, `PATCH`, `DELETE` | `/listings/{id}` | Read or manage a listing; changes require host ownership. |
-| `GET` | `/host/listings`, `/host/bookings` | Selected host's listings and bookings. |
-| `POST` | `/bookings/quote` | Validate dates/guests/availability and return a price quote. |
-| `POST` | `/bookings` | Create a confirmed booking with mock payment. |
-| `GET` | `/bookings/mine`, `/bookings/{id}` | List the selected guest's bookings or read an authorized booking. |
-| `GET`, `POST` | `/favorites` | List/add the selected user's favorites. |
-| `DELETE` | `/favorites/{listing_id}` | Remove a favorite. |
-| `GET` | `/listings/{id}/reviews` | List reviews for a stay. |
-| `POST` | `/reviews` | Submit a review for an eligible completed booking. |
+### `users`
 
-Interactive API docs are available at `http://127.0.0.1:8000/docs` while the backend is running.
+Stores guest and host information.
 
-## Booking and availability validation
+| Column | Description   |
+| ------ | ------------- |
+| id     | User ID       |
+| name   | User name     |
+| email  | User email    |
+| role   | Guest or host |
 
-The backend rejects check-in dates in the past, check-out dates that are not after check-in, missing listings, guest counts above listing capacity, and date ranges that overlap a confirmed booking. Ranges use check-in inclusive/check-out exclusive semantics, so a guest can check in on another booking's check-out date. The service calculates nights and the authoritative total using the listing's current nightly price, cleaning fee, and a 12% service fee, then stores price snapshots on the booking. SQLite obtains a write lock before the overlap check to reduce concurrent double bookings.
+### `listings`
 
-## Guest and host roles
+Stores property information.
 
-Authentication is intentionally mocked. The frontend stores a selected demo user ID in local storage and sends it as `X-User-Id`; if omitted, the API defaults to guest ID `6`. Seeded host IDs are `1` through `5`. The header switches between guest ID `6` and host ID `1`. Backend dependencies check the selected user's role, and host listing updates/deletes also check ownership. This is assignment/demo behavior, not production authentication.
+| Column          | Description          |
+| --------------- | -------------------- |
+| id              | Listing ID           |
+| host_id         | ID of the host       |
+| title           | Property title       |
+| description     | Property description |
+| location        | Property location    |
+| price_per_night | Nightly price        |
+| guests          | Maximum guests       |
+| bedrooms        | Number of bedrooms   |
+| bathrooms       | Number of bathrooms  |
+| property_type   | Type of property     |
 
-## Run locally
+### `listing_images`
 
-Requirements: Node.js 20.9+ with npm, and Python 3.10+.
+Stores images associated with listings.
 
-### Backend (PowerShell)
+| Column     | Description     |
+| ---------- | --------------- |
+| id         | Image ID        |
+| listing_id | Related listing |
+| image_url  | Image URL       |
+
+### `amenities`
+
+Stores available amenities.
+
+| Column | Description  |
+| ------ | ------------ |
+| id     | Amenity ID   |
+| name   | Amenity name |
+
+### `listing_amenities`
+
+Connects listings with their amenities.
+
+| Column     | Description |
+| ---------- | ----------- |
+| listing_id | Listing ID  |
+| amenity_id | Amenity ID  |
+
+This creates a **many-to-many relationship** between listings and amenities.
+
+### `bookings`
+
+Stores user reservations.
+
+| Column      | Description         |
+| ----------- | ------------------- |
+| id          | Booking ID          |
+| listing_id  | Booked listing      |
+| user_id     | Guest ID            |
+| check_in    | Check-in date       |
+| check_out   | Check-out date      |
+| guests      | Number of guests    |
+| total_price | Total booking price |
+| status      | Booking status      |
+
+### `reviews`
+
+Stores reviews for listings.
+
+| Column     | Description |
+| ---------- | ----------- |
+| id         | Review ID   |
+| listing_id | Listing ID  |
+| user_id    | Reviewer ID |
+| rating     | Rating      |
+| comment    | Review text |
+
+### `favorites`
+
+Stores wishlist items.
+
+| Column     | Description   |
+| ---------- | ------------- |
+| user_id    | User ID       |
+| listing_id | Saved listing |
+
+---
+
+## 4. Setup Instructions
+
+### Prerequisites
+
+Make sure the following are installed:
+
+* Python 3.12
+* Node.js
+* npm
+
+### Step 1: Clone the repository
+
+```bash
+git clone <repository-url>
+cd Staybnb
+```
+
+### Step 2: Setup Backend
 
 ```powershell
 cd backend
+
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+
+pip install -r requirements.txt
+```
+
+Create the environment file:
+
+```powershell
 Copy-Item .env.example .env
+```
+
+Initialize and seed the database:
+
+```powershell
 python -m app.db.initialize
 python -m app.db.seed
+```
+
+Start the backend:
+
+```powershell
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-If PowerShell blocks virtual-environment activation, run the environment's interpreter directly after creation:
+Backend:
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m app.db.initialize
-.\.venv\Scripts\python.exe -m app.db.seed
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```text
+http://localhost:8000
 ```
 
-### Frontend (another terminal)
+API documentation:
+
+```text
+http://localhost:8000/docs
+```
+
+### Step 3: Setup Frontend
+
+Open a new terminal:
 
 ```powershell
 cd frontend
+
 npm install
+```
+
+Create the environment file:
+
+```powershell
 Copy-Item .env.example .env.local
+```
+
+Start the frontend:
+
+```powershell
 npm run dev
 ```
 
-Open `http://localhost:3000`. To create a production frontend build, run `npm run build` from `frontend/`.
+Frontend:
 
-On Windows, if `npm` is not found but Node.js is installed in its standard location, add it to the current terminal's path and invoke the Windows command shim:
-
-```powershell
-$env:Path = 'C:\Program Files\nodejs;' + $env:Path
-npm.cmd install
-npm.cmd run dev
+```text
+http://localhost:3000
 ```
 
-If Windows denies access to port `8000`, run Uvicorn with `--port 8001` and set `NEXT_PUBLIC_API_URL=http://127.0.0.1:8001/api` in `frontend/.env.local`, then restart Next.js.
+---
 
-### Environment variables
+## 5. Environment Variables
 
-`backend/.env.example`:
+### Backend
 
-```dotenv
+Create `backend/.env`:
+
+```env
 APP_NAME=Staybnb API
 DATABASE_URL=sqlite:///./staybnb.db
 FRONTEND_ORIGIN=http://localhost:3000
 ```
 
-`frontend/.env.example`:
+### Frontend
 
-```dotenv
+Create `frontend/.env.local`:
+
+```env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
 ```
 
-Both applications have defaults for local development. `.env` and `.env.local` are ignored and should not be committed. Do not put secrets in `NEXT_PUBLIC_` variables.
+For the deployed application:
 
-### Seed data
-
-Run from `backend/` after installing dependencies:
-
-```powershell
-python -m app.db.initialize
-python -m app.db.seed
+```env
+NEXT_PUBLIC_API_URL=https://airbnb-1-he54.onrender.com/api
 ```
 
-The seed script creates demo users, amenities, 18 listings with three images each, reviews, favorites, and past/future bookings. It can be rerun: when demo users already exist, it refreshes images for the known demo listings and leaves other data intact. To start with a completely fresh demo database, stop the backend, remove `backend/staybnb.db`, then run the initialization and seed commands again.
+---
 
-## Assumptions and limitations
+## 6. Assumptions Made
 
-- Prices are represented in integer cents of INR to avoid floating-point totals.
-- Booking dates are calendar dates, and check-out is exclusive.
-- Checkout/payment, identity, and authentication are mock flows; there is no payment provider or production account security.
-- Demo user IDs and role switching are for local evaluation only.
-- Listing photos are remote Unsplash URLs (with a local fallback image); image availability depends on that external service.
-- No live map, real-time pricing, messaging, or production booking cancellation flow is included.
-- Availability is based on confirmed bookings in the SQLite database.
+The following assumptions were made to keep the project suitable for a college-level implementation:
 
-## Bonus touches
+* Authentication is **mocked** using demo user IDs instead of implementing a full authentication system.
+* The frontend sends the current user through the `X-User-Id` request header.
+* User ID `6` is used as the default guest and user IDs `1–5` are used as hosts.
+* Payments are simulated; no real payment gateway is connected.
+* SQLite is used as the database because the project is intended for demonstration.
+* Listing images are provided through image URLs rather than a dedicated image-upload system.
+* Booking dates are handled as calendar dates.
+* A booking is considered unavailable when its dates overlap with another confirmed booking.
+* The backend calculates the final booking price.
+* The application uses seeded demo listings and users.
+* Production features such as real authentication, payments, messaging, and real-time updates are outside the scope of this project.
 
-Responsive layouts, category shortcuts, amenity/price filters, persistent favorites, toast feedback, an availability-aware booking quote, themed seeded photo galleries, and FastAPI interactive docs are included. No interactive map or real payment integration is included.
+---
 
-## Deploy quickly (Render)
+## 7. Deployment
 
-Push this repository to GitHub and create two Render Web Services from it. For the backend, use root `backend`, build command `pip install -r requirements.txt`, and start command `python -m app.db.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT`. For the frontend, use root `frontend`, build command `npm ci && npm run build`, and start command `npm start`. Use the Node runtime for the frontend and Python 3 for the backend.
+The application is deployed using Render.
 
-Set frontend `NEXT_PUBLIC_API_URL` to the backend's public Render URL ending in `/api`. Set backend `FRONTEND_ORIGIN` to the frontend's exact public Render origin. Render supplies `PORT`. SQLite defaults to `backend/staybnb.db`; Render's temporary disk can lose data when the service is replaced or spun down, and startup seeds demo data again. This setup is for a quick, single-instance demo.
+**Frontend:**
+[https://airbnb-frontend-ff31.onrender.com/](https://airbnb-frontend-ff31.onrender.com/)
+
+**Backend:**
+[https://airbnb-1-he54.onrender.com](https://airbnb-1-he54.onrender.com)
+
+**API Documentation:**
+[https://airbnb-1-he54.onrender.com/docs](https://airbnb-1-he54.onrender.com/docs)
+
+---
+
+## 8. Project Structure
+
+```text
+Staybnb/
+│
+├── frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   ├── components/
+│   │   └── lib/
+│   ├── public/
+│   └── .env.example
+│
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   ├── core/
+│   │   ├── db/
+│   │   ├── models/
+│   │   ├── schemas/
+│   │   └── services/
+│   ├── requirements.txt
+│   └── .env.example
+│
+└── README.md
+```
+
+---
+
+## 9. Summary
+
+Staybnb demonstrates a complete full-stack application with:
+
+* Next.js frontend
+* FastAPI backend
+* SQLite database
+* REST API communication
+* CRUD operations
+* Booking and availability validation
+* Guest and host functionality
+* Cloud deployment
