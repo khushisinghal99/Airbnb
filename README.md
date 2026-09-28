@@ -1,6 +1,6 @@
 # Staybnb 🏡
 
-Staybnb is a full-stack Airbnb-style stay booking application built as a college project. It allows users to browse stays, filter listings, view property details, make bookings, manage their trips, and save properties to a wishlist. Hosts can create and manage their listings and view bookings.
+Staybnb is a full-stack Airbnb-style stay booking application built as a project. It allows users to browse stays, filter listings, view property details, make bookings, manage their trips, and save properties to a wishlist. Hosts can create and manage their listings and view bookings.
 
 **Live Demo:** [Staybnb – Find your place](https://airbnb-frontend-ff31.onrender.com/)
 
